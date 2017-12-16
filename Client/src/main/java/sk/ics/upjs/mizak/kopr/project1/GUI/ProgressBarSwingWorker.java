@@ -1,5 +1,6 @@
 package sk.ics.upjs.mizak.kopr.project1.GUI;
 
+import sk.ics.upjs.mizak.kopr.project1.GUI.core.IProgressInformer;
 import sk.ics.upjs.mizak.kopr.project1.GUI.core.ProgressInformer;
 
 import javax.swing.*;
@@ -8,10 +9,10 @@ import java.util.concurrent.ExecutionException;
 
 public class ProgressBarSwingWorker extends SwingWorker<Boolean, Integer> {
 
-    private ProgressInformer progressInformer;
+    private IProgressInformer progressInformer;
     private JProgressBar progressBar;
 
-    public ProgressBarSwingWorker(ProgressInformer progressInformer, JProgressBar progressBar) {
+    public ProgressBarSwingWorker(IProgressInformer progressInformer, JProgressBar progressBar) {
         this.progressInformer = progressInformer;
         this.progressBar = progressBar;
     }
@@ -52,5 +53,9 @@ public class ProgressBarSwingWorker extends SwingWorker<Boolean, Integer> {
             throw new RuntimeException("Error completing the task" + e.getCause());
         }
 
+    }
+
+    public void setProgressInformer(ProgressInformer progressInformer) {
+        this.progressInformer = progressInformer;
     }
 }

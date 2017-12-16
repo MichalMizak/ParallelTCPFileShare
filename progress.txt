@@ -1,1 +1,1 @@
-{"threadCount":3,"threadToSentData":{},"downloadFinished":false}
+{"threadCount":0,"threadToSentData":{},"downloadFinished":true}

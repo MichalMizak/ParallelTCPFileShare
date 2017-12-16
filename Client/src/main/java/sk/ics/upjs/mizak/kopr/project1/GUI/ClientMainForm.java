@@ -1,9 +1,12 @@
 package sk.ics.upjs.mizak.kopr.project1.GUI;
 
+import configuration.ClientServerConfiguration;
 import sk.ics.upjs.mizak.kopr.project1.GUI.core.ClientManager;
+import sk.ics.upjs.mizak.kopr.project1.GUI.core.DummyProgressInformer;
 import sk.ics.upjs.mizak.kopr.project1.GUI.core.ProgressInformer;
-import sk.ics.upjs.mizak.kopr.project1.GUI.entities.Progress;
+import entities.Progress;
 import sk.ics.upjs.mizak.kopr.project1.GUI.enums.DownloadState;
+import utilities.ProgressParser;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -12,7 +15,6 @@ public class ClientMainForm extends JFrame {
 
     private ProgressInformer progressInformer;
     private DownloadState downloadState;
-    private Progress progress;
     private ClientManager clientManager;
     private ProgressBarSwingWorker progressBarSwingWorker;
 
@@ -31,10 +33,14 @@ public class ClientMainForm extends JFrame {
     }
 
     /**
-     * Check if there is any pending download, init fields
+     * Check if there is any pending previous download, init fields
+     * Ideally should be done outside GUI, but it's a very lighweight operation
      */
     private void initProgress() {
-        progress = ProgressInformer.readProgress();
+        progressBarSwingWorker = new ProgressBarSwingWorker(new DummyProgressInformer(clientManager, 0),
+                downloadProgressBar);
+
+        Progress progress = ProgressParser.readProgress();
 
         boolean isDownloadFinished = progress.isDownloadFinished();
 
@@ -207,13 +213,12 @@ public class ClientMainForm extends JFrame {
             }
             case PENDING: {
                 pausedGUI();
-                progress = clientManager.pause();
+                clientManager.pause();
                 progressBarSwingWorker.cancel(true);
-                ProgressInformer.writeProgress(progress);
                 break;
             }
             case PAUSED: {
-                ProgressInformer.flushProgress();
+                ProgressParser.flushProgress();
                 doneGUI();
                 break;
             }
@@ -231,27 +236,27 @@ public class ClientMainForm extends JFrame {
                 String threadCountString = threadCountTextField.getText().trim();
                 Integer threadCount = Integer.parseInt(threadCountString);
 
-                progressInformer = clientManager.initDownload(threadCount);
+                // TODO: download needs to move to another thread
+                progressInformer = clientManager.newDownload(threadCount);
                 downloadState = DownloadState.PENDING;
 
-                progressBarSwingWorker = new ProgressBarSwingWorker(progressInformer,
-                        downloadProgressBar);
+                progressBarSwingWorker.setProgressInformer(progressInformer);
 
                 pendingGUI();
                 break;
             }
             case PAUSED: {
-                progressInformer = clientManager.continueDownload(progress);
+                // TODO: download needs to move to another thread
+
+                progressInformer = clientManager.continueDownload();
                 downloadState = DownloadState.PENDING;
 
-                progressBarSwingWorker = new ProgressBarSwingWorker(progressInformer,
-                        downloadProgressBar);
+                progressBarSwingWorker.setProgressInformer(progressInformer);
 
                 pendingGUI();
                 break;
             }
         }
-
     }
 
     private void fileServerIpTextFieldActionPerformed(java.awt.event.ActionEvent evt) {

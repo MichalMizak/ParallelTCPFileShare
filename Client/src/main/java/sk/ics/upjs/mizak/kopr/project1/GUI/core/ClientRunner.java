@@ -11,8 +11,5 @@ public class ClientRunner {
             ClientMainForm form = new ClientMainForm();
             form.setVisible(true);
         });
-
-        /* Client client = new Client();
-        client.init(); */
     }
 }
