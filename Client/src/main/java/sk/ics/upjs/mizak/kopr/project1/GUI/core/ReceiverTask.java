@@ -1,5 +1,7 @@
 package sk.ics.upjs.mizak.kopr.project1.GUI.core;
 
+import configuration.ClientServerConfiguration;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,20 +19,25 @@ public class ReceiverTask implements Runnable, Callable<Integer> {
     private Socket senderSocket;
     private int threadId;
     private Long dataReceived;
-    private Long partSize;
+    private Long offset;
 
-
-    public ReceiverTask(Socket senderSocket, int threadId, Long dataReceived, Long partSize) {
+    public ReceiverTask(Socket senderSocket, int threadId, Long dataReceived, Long offset) {
         this.senderSocket = senderSocket;
         this.threadId = threadId;
         this.dataReceived = dataReceived;
-        this.partSize = partSize;
+        this.offset = offset;
     }
 
     private void initFile() {
         try {
+
             fileToWriteTo = new RandomAccessFile(FILE_TO_WRITE_TO, "rw");
+            long dataStart = dataReceived + offset;
+            fileToWriteTo.seek(dataStart);
+
         } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -55,18 +62,17 @@ public class ReceiverTask implements Runnable, Callable<Integer> {
                     break;
                 }
 
-                // threadId * partSize + dataReceived * CHUNK_SIZE
-                fileToWriteTo.seek(dataReceived + threadId * partSize);
+                // also moves the file pointer
                 fileToWriteTo.write(buffer, 0, readDataLength);
 
                 // TODO: proper progress saving
                 dataReceived += readDataLength;
 
-                if (readDataLength != CHUNK_SIZE)
+                /*if (readDataLength != CHUNK_SIZE)
                     System.out.println("@ReceiverTask " + "threadId: " + threadId +
                             " dataReceived: " + dataReceived + "" +
-                            " readDataLength: " + readDataLength);
-
+                            " readDataLength: " + readDataLength +
+                            " dataStart: " + dataStart);*/
             }
         } catch (IOException e) {
             e.printStackTrace();

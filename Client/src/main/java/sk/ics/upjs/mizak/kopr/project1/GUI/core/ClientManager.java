@@ -16,7 +16,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static configuration.ClientServerConfiguration.FILE_TO_SEND;
 import static configuration.ClientServerConfiguration.IP;
 import static configuration.ClientServerConfiguration.PORT;
 
@@ -71,7 +70,6 @@ public class ClientManager {
         return null;
     }
 
-
     private void initTasks(Progress progress) {
 
         List<Socket> serverSockets = new LinkedList<>();
@@ -88,6 +86,8 @@ public class ClientManager {
 
         List<ReceiverTask> receiverTasks = new LinkedList<>();
 
+        long offset = 0;
+
         for (int i = 0; i < serverSockets.size(); i++) {
             Socket socket = serverSockets.get(i);
 
@@ -95,9 +95,12 @@ public class ClientManager {
             Long partSize = ClientServerConfiguration.getPartSize(progress.getThreadCount());
 
             ReceiverTask receiverTask = new ReceiverTask(socket, i,
-                    threadToSentData.get(i), partSize);
+                    threadToSentData.get(i), offset);
 
             receiverTasks.add(receiverTask);
+
+            // +1
+            offset += partSize;
         }
 
         execute(receiverTasks);

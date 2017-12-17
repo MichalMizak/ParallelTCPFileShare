@@ -38,7 +38,10 @@ public class SenderTask implements Runnable, Callable<Integer> {
     private void initFile() {
         try {
             fileToSend = new RandomAccessFile(FILE_TO_SEND, "r");
+            fileToSend.seek(start);
         } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -46,22 +49,28 @@ public class SenderTask implements Runnable, Callable<Integer> {
     private void send() {
 
         byte[] buffer = new byte[CHUNK_SIZE];
-
+        int length = CHUNK_SIZE;
         try {
             while (start < end) {
-                long length = Math.min(CHUNK_SIZE, end - start);
+                long remainingData = end - start;
 
-                fileToSend.seek(start);
-                fileToSend.read(buffer, 0, (int) length);
+                if (remainingData < CHUNK_SIZE) {
+                    length = (int) remainingData;
+                    buffer = new byte[length];
+                }
+
+                fileToSend.read(buffer, 0, length);
 
                 receiverSocket.getOutputStream().write(buffer);
 
                 if (length != CHUNK_SIZE)
                     System.out.println("@SenderTask " + "thread:" + threadId +
-                            " + start: " + start + "length: " + length + " fileSize: " + fileToSend.length());
+                            " + start: " + start + " length: " + length + " fileSize: " + fileToSend.length());
 
                 start += length;
             }
+            // send an empty message
+            receiverSocket.getOutputStream().write(new byte[0]);
 
         } catch (IOException e) {
             e.printStackTrace();

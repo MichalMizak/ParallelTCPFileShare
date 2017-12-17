@@ -75,7 +75,9 @@ public class Server {
                     offset + progress.getThreadToSentData().get(i), end);
 
             System.out.println("@Server " + senderTask.toString());
-            offset += partLength + 1;
+
+            // +1
+            offset += partLength;
 
             senderTasks.add(senderTask);
         }
