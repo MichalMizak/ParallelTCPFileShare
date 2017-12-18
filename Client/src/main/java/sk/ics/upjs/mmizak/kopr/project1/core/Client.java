@@ -1,4 +1,4 @@
-package sk.ics.upjs.mizak.kopr.project1.GUI.core;
+package sk.ics.upjs.mmizak.kopr.project1.core;
 
 import configuration.ClientServerConfiguration;
 import entities.Progress;
@@ -7,28 +7,29 @@ import utilities.ProgressParser;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 import static configuration.ClientServerConfiguration.IP;
 import static configuration.ClientServerConfiguration.PORT;
 
-public class ClientManager {
+public class Client {
 
     private ProgressInformer progressInformer;
+    private List<Socket> serverSockets;
+    private ExecutorService executorService;
 
     public ProgressInformer newDownload(int threadCount) {
-        Map<Integer, Long> threadToSentData = new HashMap<>();
+        ConcurrentMap<Integer, Long> threadToSentData = new ConcurrentHashMap<>();
+
         for (int i = 0; i < threadCount; i++) {
             threadToSentData.put(i, 0L);
         }
-        Progress progress = new Progress(true, threadCount, threadToSentData);
+
+        Progress progress = new Progress(false, threadCount, threadToSentData);
+
         return initDownload(progress);
     }
 
@@ -38,7 +39,7 @@ public class ClientManager {
         return initDownload(progress);
     }
 
-    public ProgressInformer initDownload(Progress progress) {
+    private ProgressInformer initDownload(Progress progress) {
 
         String metadataJSON = ProgressParser.getProgressString(progress);
 
@@ -48,12 +49,12 @@ public class ClientManager {
         try {
             metadataSocket = new Socket(IP, PORT);
 
-            System.out.println("@ClientManager " + "Successfully opened metadataSocket");
+            System.out.println("@Client " + "Successfully opened metadataSocket");
 
             metadataOutputStream = new DataOutputStream(metadataSocket.getOutputStream());
             metadataOutputStream.writeUTF(metadataJSON);
 
-            System.out.println("@ClientManager " + "Successfully sent metadataJSON");
+            System.out.println("@Client " + "Successfully sent metadataJSON");
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -64,15 +65,17 @@ public class ClientManager {
             }
         }
 
-        // TODO: file size sending instead of using size from configuration
-        initTasks(progress);
+        this.progressInformer = new ProgressInformer(progress);
 
-        return null;
+        initTasks(progressInformer);
+
+        return progressInformer;
     }
 
-    private void initTasks(Progress progress) {
+    private void initTasks(ProgressInformer progressInformer) {
+        Progress progress = progressInformer.getProgress();
 
-        List<Socket> serverSockets = new LinkedList<>();
+        serverSockets = new LinkedList<>();
 
         for (int i = 0; i < progress.getThreadCount(); i++) {
             Socket serverSocket = null;
@@ -95,7 +98,7 @@ public class ClientManager {
             Long partSize = ClientServerConfiguration.getPartSize(progress.getThreadCount());
 
             ReceiverTask receiverTask = new ReceiverTask(socket, i,
-                    threadToSentData.get(i), offset);
+                    threadToSentData.get(i), offset, progressInformer);
 
             receiverTasks.add(receiverTask);
 
@@ -108,34 +111,42 @@ public class ClientManager {
 
     @SuppressWarnings("Duplicates")
     private void execute(List<ReceiverTask> receiverTasks) {
-        ExecutorService executorService = Executors.newFixedThreadPool(receiverTasks.size());
+        executorService = Executors.newFixedThreadPool(receiverTasks.size());
 
-        List<Future<Integer>> futures = null;
-
-        try {
-            futures = executorService.invokeAll(receiverTasks);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        for (ReceiverTask task : receiverTasks) {
+            executorService.submit(task);
         }
+    }
 
-        for (Future<Integer> future : futures) {
+    /**
+     * Terminate the download while saving progress
+     */
+    public void pause() {
+        serverSockets.forEach((socket) -> {
+                    try {
+                        socket.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+        );
+        executorService.shutdownNow();
+        ProgressParser.writeProgress(progressInformer.getProgress());
+    }
+
+    private void awaitResult(List<Future<Void>> futures) {
+        for (Future<Void> future : futures) {
             try {
                 future.get();
+                System.out.println("@Client " + "Got past future.get");
             } catch (InterruptedException e) {
                 e.printStackTrace();
             } catch (ExecutionException e) {
+                System.out.println("@Client " + "future threw exception");
+                e.printStackTrace();
+
                 // TODO: catch a particular exception to get PROGRESS from when closing sockets
             }
         }
-    }
-
-    public Progress pause() {
-        // pause all threads
-        ProgressParser.writeProgress(progressInformer.getProgress());
-        return null;
-    }
-
-    public Integer getProgress() {
-        return null;
     }
 }

@@ -1,27 +1,32 @@
-package sk.ics.upjs.mizak.kopr.project1.GUI;
+package sk.ics.upjs.mmizak.kopr.project1.GUI;
 
 import configuration.ClientServerConfiguration;
-import sk.ics.upjs.mizak.kopr.project1.GUI.core.ClientManager;
-import sk.ics.upjs.mizak.kopr.project1.GUI.core.DummyProgressInformer;
-import sk.ics.upjs.mizak.kopr.project1.GUI.core.ProgressInformer;
+import core.FinalTest;
+import sk.ics.upjs.mmizak.kopr.project1.GUI.enums.DownloadState;
+import sk.ics.upjs.mmizak.kopr.project1.core.Client;
+import sk.ics.upjs.mmizak.kopr.project1.core.ProgressInformer;
 import entities.Progress;
-import sk.ics.upjs.mizak.kopr.project1.GUI.enums.DownloadState;
 import utilities.ProgressParser;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 
+import static configuration.ClientServerConfiguration.CHUNK_SIZE;
+
 public class ClientMainForm extends JFrame {
 
     private ProgressInformer progressInformer;
     private DownloadState downloadState;
-    private ClientManager clientManager;
+    private Client client;
     private ProgressBarSwingWorker progressBarSwingWorker;
 
     public ClientMainForm() {
         init();
     }
 
+    /**
+     * General initiation
+     */
     private void init() {
         initComponents();
         initLookAndFeel();
@@ -29,50 +34,7 @@ public class ClientMainForm extends JFrame {
 
         initProgress();
 
-        clientManager = new ClientManager();
-    }
-
-    /**
-     * Check if there is any pending previous download, init fields
-     * Ideally should be done outside GUI, but it's a very lighweight operation
-     */
-    private void initProgress() {
-        progressBarSwingWorker = new ProgressBarSwingWorker(new DummyProgressInformer(clientManager, 0),
-                downloadProgressBar);
-
-        Progress progress = ProgressParser.readProgress();
-
-        boolean isDownloadFinished = progress.isDownloadFinished();
-
-        if (!isDownloadFinished) {
-            pausedGUI();
-        } else {
-            doneGUI();
-        }
-    }
-
-    private void pausedGUI() {
-        cancelButton.setText("Reset");
-        cancelButton.setEnabled(true);
-        downloadButton.setText("Continue");
-        downloadButton.setEnabled(true);
-        downloadState = DownloadState.PAUSED;
-    }
-
-    private void pendingGUI() {
-        cancelButton.setText("Cancel");
-        cancelButton.setEnabled(true);
-        downloadButton.setText("Downloading");
-        downloadButton.setEnabled(false);
-        downloadState = DownloadState.PENDING;
-    }
-
-    private void doneGUI() {
-        cancelButton.setText("Cancel");
-        cancelButton.setEnabled(false);
-        downloadButton.setText("Download");
-        downloadButton.setEnabled(true);
-        downloadState = DownloadState.DONE;
+        client = new Client();
     }
 
     /**
@@ -99,11 +61,6 @@ public class ClientMainForm extends JFrame {
         jLabel2.setText("Thread count:");
 
         threadCountTextField.setText("1");
-        threadCountTextField.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                fileServerIpTextFieldActionPerformed(evt);
-            }
-        });
 
         downloadButton.setText("Download");
         downloadButton.addActionListener(new java.awt.event.ActionListener() {
@@ -162,106 +119,155 @@ public class ClientMainForm extends JFrame {
                                         .addComponent(jLabel3))
                                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
-
-        /*
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(layout.createSequentialGroup()
-                                .addContainerGap()
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addComponent(jLabel2)
-                                                .addGap(18, 18, 18)
-                                                .addComponent(threadCountTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 251, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                                        .addGroup(layout.createSequentialGroup()
-                                                                .addGap(0, 0, Short.MAX_VALUE)
-                                                                .addComponent(downloadButton))
-                                                        .addGroup(layout.createSequentialGroup()
-                                                                .addComponent(jLabel3)
-                                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                                                .addComponent(downloadProgressBar, javax.swing.GroupLayout.PREFERRED_SIZE, 251, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                                .addContainerGap())))
-        );
-        layout.setVerticalGroup(
-                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(layout.createSequentialGroup()
-                                .addGap(8, 8, 8)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(threadCountTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(jLabel2))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(downloadButton)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                        .addComponent(downloadProgressBar, javax.swing.GroupLayout.PREFERRED_SIZE, 31, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(jLabel3))
-                                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );*/
-
         pack();
     }// </editor-fold>
 
+    //<editor-fold desc="Progress initiation">
+
+    /**
+     * Check if there is any pending previous download, init fields
+     * Ideally should be startState outside GUI, but it's a very lighweight operation
+     */
+    private void initProgress() {
+        Progress progress = ProgressParser.readProgress();
+
+        boolean isDownloadFinished = progress.isDownloadFinished();
+
+        ProgressInformer progressInformer = new ProgressInformer(progress);
+
+        progressBarSwingWorker = new ProgressBarSwingWorker(progressInformer, downloadProgressBar, cancelButton);
+        progressBarSwingWorker.execute();
+
+        if (!isDownloadFinished) {
+            pausedGUI();
+        } else {
+            startGUI();
+        }
+    }
+    //</editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="GUI state change methods">
+    private void pausedGUI() {
+        cancelButton.setText("Reset");
+        cancelButton.setEnabled(true);
+        downloadButton.setText("Continue");
+        downloadButton.setEnabled(true);
+        downloadState = DownloadState.PAUSED;
+    }
+
+    private void pendingGUI() {
+        cancelButton.setText("Cancel");
+        cancelButton.setEnabled(true);
+        downloadButton.setText("Downloading");
+        downloadButton.setEnabled(false);
+        downloadState = DownloadState.PENDING;
+    }
+
+    private void startGUI() {
+        cancelButton.setText("Cancel");
+        cancelButton.setEnabled(false);
+        downloadButton.setText("Download");
+        downloadButton.setEnabled(true);
+        downloadState = DownloadState.START;
+    }
+
+    private void doneGUI() {
+        cancelButton.setText("Reset");
+        cancelButton.setEnabled(true);
+        downloadButton.setText("Done");
+        downloadButton.setEnabled(false);
+        downloadState = DownloadState.DONE;
+    }
+    // </editor-fold>
+
+    //<editor-fold desc="Button action handling">
     private void cancelButtonActionPerformed(ActionEvent evt) {
         switch (downloadState) {
+            case START: {
+                break;
+            }
             case DONE: {
-                return;
+                startState();
+                break;
             }
             case PENDING: {
-                pausedGUI();
-                clientManager.pause();
-                progressBarSwingWorker.cancel(true);
+                if (progressInformer.getProgressPercents() == 100) {
+                    doneState();
+                    break;
+                }
+                pauseState();
                 break;
             }
             case PAUSED: {
-                ProgressParser.flushProgress();
-                doneGUI();
+                startState();
                 break;
             }
         }
     }
 
     private void connectButtonActionPerformed(java.awt.event.ActionEvent evt) {
-
         switch (downloadState) {
             case PENDING: {
-                return;
+                break;
             }
             case DONE: {
-                // init new download
-                String threadCountString = threadCountTextField.getText().trim();
-                Integer threadCount = Integer.parseInt(threadCountString);
-
-                // TODO: download needs to move to another thread
-                progressInformer = clientManager.newDownload(threadCount);
-                downloadState = DownloadState.PENDING;
-
-                progressBarSwingWorker.setProgressInformer(progressInformer);
-
-                pendingGUI();
+                break;
+            }
+            case START: {
+                initDownload();
                 break;
             }
             case PAUSED: {
-                // TODO: download needs to move to another thread
-
-                progressInformer = clientManager.continueDownload();
-                downloadState = DownloadState.PENDING;
-
-                progressBarSwingWorker.setProgressInformer(progressInformer);
-
-                pendingGUI();
+                // TODO: download should move to another thread for the best performance
+                continueDownload();
                 break;
             }
         }
     }
+    //</editor-fold>
 
-    private void fileServerIpTextFieldActionPerformed(java.awt.event.ActionEvent evt) {
-        // TODO add your handling code here:
+    //<editor-fold desc="State changers">
+    private void continueDownload() {
+        progressInformer = client.continueDownload();
+        downloadState = DownloadState.PENDING;
+
+        progressBarSwingWorker.setProgressInformer(progressInformer);
+
+        pendingGUI();
     }
+
+    private void initDownload() {
+        String threadCountString = threadCountTextField.getText().trim();
+        Integer threadCount = Integer.parseInt(threadCountString);
+
+        // TODO: download needs to move to another thread for the best performance
+
+        progressInformer = client.newDownload(threadCount);
+        downloadState = DownloadState.PENDING;
+
+        progressBarSwingWorker.setProgressInformer(progressInformer);
+
+        pendingGUI();
+    }
+
+    private void pauseState() {
+        progressBarSwingWorker.pausedState();
+        client.pause();
+        pausedGUI();
+    }
+
+    private void startState() {
+        progressBarSwingWorker.resetState();
+        startGUI();
+        ProgressParser.flushProgress();
+    }
+
+    private void doneState() {
+        doneGUI();
+        progressBarSwingWorker.doneState();
+        FinalTest.compare(CHUNK_SIZE);
+    }
+    //</editor-fold>
 
     /**
      * GENERATED NETBEANS CODE
@@ -280,19 +286,19 @@ public class ClientMainForm extends JFrame {
                 }
             }
         } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(Client.class
+            java.util.logging.Logger.getLogger(sk.ics.upjs.mmizak.kopr.project1.core.Client.class
                     .getName()).log(java.util.logging.Level.SEVERE, null, ex);
 
         } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(Client.class
+            java.util.logging.Logger.getLogger(sk.ics.upjs.mmizak.kopr.project1.core.Client.class
                     .getName()).log(java.util.logging.Level.SEVERE, null, ex);
 
         } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(Client.class
+            java.util.logging.Logger.getLogger(sk.ics.upjs.mmizak.kopr.project1.core.Client.class
                     .getName()).log(java.util.logging.Level.SEVERE, null, ex);
 
         } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(Client.class
+            java.util.logging.Logger.getLogger(sk.ics.upjs.mmizak.kopr.project1.core.Client.class
                     .getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
         //</editor-fold>
@@ -306,6 +312,4 @@ public class ClientMainForm extends JFrame {
     private javax.swing.JLabel jLabel3;
     private javax.swing.JProgressBar downloadProgressBar;
     // End of variables declaration
-
-
 }

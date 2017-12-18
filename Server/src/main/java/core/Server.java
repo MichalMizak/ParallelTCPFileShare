@@ -25,15 +25,18 @@ public class Server {
     public void init() {
         Progress progress;
 
-        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-            this.serverSocket = serverSocket;
-            Socket metadataSocket = serverSocket.accept();
-            DataInputStream metadataInputStream = new DataInputStream(metadataSocket.getInputStream());
+        try {
+            serverSocket = new ServerSocket(PORT);
+            while (!Thread.currentThread().isInterrupted()) {
+                Socket metadataSocket = serverSocket.accept();
 
-            String metadataJSON = metadataInputStream.readUTF();
-            progress = ProgressParser.readProgress(metadataJSON);
-            System.out.println("@Server" + "Succesfully parsed metadataJSON");
-            initTasks(progress, serverSocket);
+                DataInputStream metadataInputStream = new DataInputStream(metadataSocket.getInputStream());
+
+                String metadataJSON = metadataInputStream.readUTF();
+                progress = ProgressParser.readProgress(metadataJSON);
+                System.out.println("@Server " + "Succesfully parsed metadataJSON");
+                initTasks(progress, serverSocket);
+            }
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -74,8 +77,6 @@ public class Server {
             SenderTask senderTask = new SenderTask(socket, i, threadToSentData.get(i),
                     offset + progress.getThreadToSentData().get(i), end);
 
-            System.out.println("@Server " + senderTask.toString());
-
             // +1
             offset += partLength;
 
@@ -90,7 +91,6 @@ public class Server {
         try {
             List<Future<Integer>> futures = executorService.invokeAll(senderTasks);
             for (Future<Integer> future : futures) {
-                System.out.println("@Server " + "awaiting get from Future<Task>");
                 future.get();
             }
         } catch (InterruptedException e) {

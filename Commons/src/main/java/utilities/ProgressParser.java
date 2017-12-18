@@ -7,6 +7,7 @@ import entities.Progress;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ProgressParser {
 
@@ -61,7 +62,7 @@ public class ProgressParser {
         }
     }
 
-    public  static String getProgressString(Progress progress) {
+    public static String getProgressString(Progress progress) {
         ObjectMapper objectMapper = new ObjectMapper();
 
         try {
@@ -76,7 +77,8 @@ public class ProgressParser {
         ObjectMapper objectMapper = new ObjectMapper();
 
         try {
-            objectMapper.writeValue(ClientServerConfiguration.CLIENT_PROGRESS_FILE, new Progress(true, 0, Collections.<Integer, Long>emptyMap()));
+            objectMapper.writeValue(ClientServerConfiguration.CLIENT_PROGRESS_FILE, new Progress(true,
+                    0, new ConcurrentHashMap<>()));
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -24,7 +24,7 @@ public class ClientServerConfiguration {
     /**
      * File to send
      */
-    public static final File FILE_TO_SEND = new File("Statistika_poznamky.rar");
+    public static final File FILE_TO_SEND = new File("zasilka-PWCS8XZRGZNLKCPI.zip");
 
     /**
      * File on the client's side to write data to

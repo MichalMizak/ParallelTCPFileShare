@@ -1,6 +1,6 @@
-package sk.ics.upjs.mizak.kopr.project1.GUI.core;
+package sk.ics.upjs.mmizak.kopr.project1.core;
 
-import sk.ics.upjs.mizak.kopr.project1.GUI.ClientMainForm;
+import sk.ics.upjs.mmizak.kopr.project1.GUI.ClientMainForm;
 
 import javax.swing.*;
 

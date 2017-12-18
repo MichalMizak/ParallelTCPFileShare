@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.concurrent.Callable;
 
 import static configuration.ClientServerConfiguration.*;
@@ -30,7 +31,6 @@ public class SenderTask implements Runnable, Callable<Integer> {
 
     @Override
     public void run() {
-        System.out.println("@SenderTask " + "run()");
         initFile();
         send();
     }
@@ -44,6 +44,8 @@ public class SenderTask implements Runnable, Callable<Integer> {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        System.out.println("@SenderTask " + toString());
     }
 
     private void send() {
@@ -63,19 +65,21 @@ public class SenderTask implements Runnable, Callable<Integer> {
 
                 receiverSocket.getOutputStream().write(buffer);
 
-                if (length != CHUNK_SIZE)
-                    System.out.println("@SenderTask " + "thread:" + threadId +
-                            " + start: " + start + " length: " + length + " fileSize: " + fileToSend.length());
-
                 start += length;
             }
-            // send an empty message
             receiverSocket.getOutputStream().write(new byte[0]);
 
+        } catch (SocketException e) {
+            System.out.println("Sender socket closing");
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            try {
+                receiverSocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
-
     }
 
 

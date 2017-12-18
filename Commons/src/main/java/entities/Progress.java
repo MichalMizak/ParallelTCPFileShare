@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 public class Progress {
@@ -14,30 +15,18 @@ public class Progress {
 
     private Integer threadCount;
 
-    private Map<Integer, Long> threadToSentData;
+    private ConcurrentMap<Integer, Long> threadToSentData;
 
     public Progress() {
-        super();
+        // unhandled
     }
 
-    public Progress(boolean isDownloadFinished, Integer threadCount, Map<Integer, Long> threadToSentData) {
+    public Progress(boolean isDownloadFinished, Integer threadCount,
+                    ConcurrentMap<Integer, Long> threadToSentData) {
         this.isDownloadFinished = isDownloadFinished;
         this.threadCount = threadCount;
         this.threadToSentData = threadToSentData;
     }
-
-    public Integer getThreadCount() {
-        return threadCount;
-    }
-
-    public Map<Integer, Long> getThreadToSentData() {
-        return threadToSentData;
-    }
-
-    public boolean isDownloadFinished() {
-        return isDownloadFinished;
-    }
-
 
     public static <T, E> Set<T> getKeysByValue(Map<T, E> map, E value) {
         return map.entrySet()
@@ -51,14 +40,20 @@ public class Progress {
         return getKeysByValue((Map<T, E>) threadToSentData, value);
     }
 
+    //<editor-fold desc="Getters and setters">
+    public Integer getThreadCount() {
+        return threadCount;
+    }
 
+    public Map<Integer, Long> getThreadToSentData() {
+        return threadToSentData;
+    }
 
-    /*
-        Prettier to create private setters than annotate constructor parameters
-     */
+    public boolean isDownloadFinished() {
+        return isDownloadFinished;
+    }
 
-    @JsonProperty
-    private void setDownloadFinished(boolean downloadFinished) {
+    public void setDownloadFinished(boolean downloadFinished) {
         isDownloadFinished = downloadFinished;
     }
 
@@ -68,7 +63,8 @@ public class Progress {
     }
 
     @JsonProperty
-    private void setThreadToSentData(Map<Integer, Long> threadToSentData) {
+    private void setThreadToSentData(ConcurrentMap<Integer, Long> threadToSentData) {
         this.threadToSentData = threadToSentData;
     }
+    //</editor-fold>
 }

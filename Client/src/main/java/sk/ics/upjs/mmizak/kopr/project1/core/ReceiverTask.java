@@ -1,18 +1,17 @@
-package sk.ics.upjs.mizak.kopr.project1.GUI.core;
-
-import configuration.ClientServerConfiguration;
+package sk.ics.upjs.mmizak.kopr.project1.core;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.concurrent.Callable;
 
 import static configuration.ClientServerConfiguration.CHUNK_SIZE;
 import static configuration.ClientServerConfiguration.FILE_TO_WRITE_TO;
 
-public class ReceiverTask implements Runnable, Callable<Integer> {
+public class ReceiverTask implements Callable<Void> {
 
     private RandomAccessFile fileToWriteTo;
 
@@ -21,11 +20,15 @@ public class ReceiverTask implements Runnable, Callable<Integer> {
     private Long dataReceived;
     private Long offset;
 
-    public ReceiverTask(Socket senderSocket, int threadId, Long dataReceived, Long offset) {
+    private ProgressInformer progressInformer;
+
+
+    public ReceiverTask(Socket senderSocket, int threadId, Long dataReceived, Long offset, ProgressInformer progressInformer) {
         this.senderSocket = senderSocket;
         this.threadId = threadId;
         this.dataReceived = dataReceived;
         this.offset = offset;
+        this.progressInformer = progressInformer;
     }
 
     private void initFile() {
@@ -42,7 +45,6 @@ public class ReceiverTask implements Runnable, Callable<Integer> {
         }
     }
 
-    @Override
     public void run() {
         initFile();
         receive();
@@ -58,7 +60,8 @@ public class ReceiverTask implements Runnable, Callable<Integer> {
 
                 int readDataLength = inputStream.read(buffer);
 
-                if (readDataLength == 0) {
+                if (readDataLength == -1) {
+                    senderSocket.close();
                     break;
                 }
 
@@ -67,20 +70,17 @@ public class ReceiverTask implements Runnable, Callable<Integer> {
 
                 // TODO: proper progress saving
                 dataReceived += readDataLength;
-
-                /*if (readDataLength != CHUNK_SIZE)
-                    System.out.println("@ReceiverTask " + "threadId: " + threadId +
-                            " dataReceived: " + dataReceived + "" +
-                            " readDataLength: " + readDataLength +
-                            " dataStart: " + dataStart);*/
+                progressInformer.setDataSent(threadId, dataReceived);
             }
+        } catch (SocketException e) {
+            System.out.println("Receiver socket closing");
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     @Override
-    public Integer call() throws Exception {
+    public Void call() throws Exception {
         run();
         return null;
     }
